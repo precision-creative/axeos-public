@@ -2,6 +2,8 @@ import { Box, Button, IconButton, Input, Typography } from '@mui/material'
 import PhotoCamera from '@mui/icons-material/PhotoCamera'
 import { ChangeEvent, useEffect, useState } from 'react'
 
+const apiURL = process.env.NEXT_PUBLIC_API_URL
+
 export function Upload() {
   const [file, setFile] = useState<any>({})
   const [filePreview, setFilePreview] = useState<string | null>(null)
@@ -16,19 +18,36 @@ export function Upload() {
   }
 
   const handleSubmit = async () => {
-    const formData = new FormData()
-    formData.append('image', file)
-
     try {
-      const res = await fetch('http://localhost:4000/targets/upload/', {
+      const searchParamsRoomKey = 'room'
+      const params = new URLSearchParams(window.location.search)
+      let room = '0'
+
+      if (params.has(searchParamsRoomKey)) {
+        room = params.get(searchParamsRoomKey)!
+      }
+
+      const formData = new FormData()
+      formData.append('image', file)
+
+      if (undefined === apiURL) {
+        console.warn('There was no `NEXT_PUBLIC_API_URL` found in the environment!')
+      }
+
+      const res = await fetch(`${apiURL}targets/upload/${room}`, {
         method: 'POST',
         body: formData,
       })
-
       const data = await res.json()
-      console.log({ data })
+
+      if (!res.ok) {
+        alert('There was an error uploading that photo — ' + data.message)
+        return
+      }
+
+      alert('Image uploaded succesfully!')
     } catch (error) {
-      console.log({ error })
+      console.error(error)
     }
   }
 
