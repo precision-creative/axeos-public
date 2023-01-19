@@ -61,27 +61,34 @@ export function Upload() {
 
   return (
     <Box>
-      <Button variant="contained" component="label">
-        Upload
+      <Button
+        variant={filePreview ? 'outlined' : 'contained'}
+        component="label"
+        startIcon={<PhotoCamera />}
+        fullWidth
+      >
+        {filePreview ? 'Change' : 'Upload'}
         <input hidden accept="image/*" type="file" onChange={handleFileChange} />
       </Button>
-      <IconButton color="primary" aria-label="upload picture" component="label">
-        <input hidden accept="image/*" type="file" onChange={handleFileChange} />
-        <PhotoCamera />
-      </IconButton>
       {filePreview && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={filePreview!}
-          alt="Preview"
-          width={400}
-          height={400}
-          style={{ objectFit: 'contain' }}
-        />
+        <Box my={2}>
+          {
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={filePreview!}
+              alt="Preview"
+              width={400}
+              height={400}
+              style={{ objectFit: 'cover', width: '100%', height: 'auto', aspectRatio: '1 / 1' }}
+            />
+          }
+        </Box>
       )}
-      <Button variant="contained" onClick={handleSubmit}>
-        Send
-      </Button>
+      {filePreview && (
+        <Button variant="contained" onClick={handleSubmit} fullWidth>
+          Send
+        </Button>
+      )}
     </Box>
   )
 }
