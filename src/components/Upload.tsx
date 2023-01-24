@@ -52,10 +52,13 @@ export function Upload() {
       }
     } catch (error) {
       console.error(error)
+      setLoading(false)
 
       if (error instanceof Error) {
         alert('There was an error uploading that photo. ' + error.message)
       }
+
+      return
     }
 
     setLoading(false)
