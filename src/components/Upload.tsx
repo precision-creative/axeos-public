@@ -1,13 +1,17 @@
 import { ChangeEvent, useEffect, useState } from 'react'
+import getConfig from 'next/config'
+import { NextConfig } from 'next'
 import { Box, Button, CircularProgress, Stack } from '@mui/material'
 import PhotoCamera from '@mui/icons-material/PhotoCamera'
 
-const apiURL = process.env.NEXT_PUBLIC_API_URL
+const { publicRuntimeConfig } = getConfig() as NextConfig
 
 export function Upload() {
   const [loading, setLoading] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [filePreview, setFilePreview] = useState<string | null>(null)
+  const NEXT_PUBLIC_API_URL =
+    process.env.NEXT_PUBLIC_API_URL ?? publicRuntimeConfig?.NEXT_PUBLIC_API_URL
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -32,7 +36,7 @@ export function Upload() {
     const formData = new FormData()
     formData.append('image', file)
 
-    if (undefined === apiURL) {
+    if (undefined === NEXT_PUBLIC_API_URL) {
       console.warn('There was no `NEXT_PUBLIC_API_URL` found in the environment!')
     }
 
@@ -41,7 +45,7 @@ export function Upload() {
     setLoading(true)
 
     try {
-      const res = await fetch(`${apiURL}/targets/upload/${room}`, {
+      const res = await fetch(`${NEXT_PUBLIC_API_URL}/targets/upload/${room}`, {
         method: 'POST',
         body: formData,
       })

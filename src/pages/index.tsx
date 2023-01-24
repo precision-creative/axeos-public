@@ -21,3 +21,9 @@ export default function HomePage() {
     </Container>
   )
 }
+
+export const getServerSideProps = () => {
+  return {
+    props: {},
+  }
+}
