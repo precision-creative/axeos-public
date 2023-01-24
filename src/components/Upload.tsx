@@ -1,11 +1,12 @@
-import { Box, Button, IconButton, Input, Typography } from '@mui/material'
-import PhotoCamera from '@mui/icons-material/PhotoCamera'
 import { ChangeEvent, useEffect, useState } from 'react'
+import { Box, Button, CircularProgress, Stack } from '@mui/material'
+import PhotoCamera from '@mui/icons-material/PhotoCamera'
 
 const apiURL = process.env.NEXT_PUBLIC_API_URL
 
 export function Upload() {
-  const [file, setFile] = useState<any>({})
+  const [loading, setLoading] = useState(false)
+  const [file, setFile] = useState<File | null>(null)
   const [filePreview, setFilePreview] = useState<string | null>(null)
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -18,36 +19,52 @@ export function Upload() {
   }
 
   const handleSubmit = async () => {
+    if (null === file) return
+
+    const searchParamsRoomKey = 'room'
+    const params = new URLSearchParams(window.location.search)
+    let room = '0'
+
+    if (params.has(searchParamsRoomKey)) {
+      room = params.get(searchParamsRoomKey)!
+    }
+
+    const formData = new FormData()
+    formData.append('image', file)
+
+    if (undefined === apiURL) {
+      console.warn('There was no `NEXT_PUBLIC_API_URL` found in the environment!')
+    }
+
+    let json
+
+    setLoading(true)
+
     try {
-      const searchParamsRoomKey = 'room'
-      const params = new URLSearchParams(window.location.search)
-      let room = '0'
-
-      if (params.has(searchParamsRoomKey)) {
-        room = params.get(searchParamsRoomKey)!
-      }
-
-      const formData = new FormData()
-      formData.append('image', file)
-
-      if (undefined === apiURL) {
-        console.warn('There was no `NEXT_PUBLIC_API_URL` found in the environment!')
-      }
-
       const res = await fetch(`${apiURL}/targets/upload/${room}`, {
         method: 'POST',
         body: formData,
       })
-      const data = await res.json()
+      json = await res.json()
 
       if (!res.ok) {
-        alert('There was an error uploading that photo — ' + data.message)
-        return
+        throw new Error(json.message)
       }
-
-      alert('Image uploaded succesfully!')
     } catch (error) {
       console.error(error)
+
+      if (error instanceof Error) {
+        alert('There was an error uploading that photo. ' + error.message)
+      }
+    }
+
+    setLoading(false)
+
+    if (undefined !== json) {
+      setFile(null)
+      setFilePreview(null)
+
+      alert('Image uploaded succesfully!')
     }
   }
 
@@ -84,11 +101,16 @@ export function Upload() {
           }
         </Box>
       )}
-      {filePreview && (
-        <Button variant="contained" onClick={handleSubmit} fullWidth>
-          Send
-        </Button>
-      )}
+      {filePreview &&
+        (loading ? (
+          <Stack direction="row" justifyContent="center">
+            <CircularProgress />
+          </Stack>
+        ) : (
+          <Button variant="contained" onClick={handleSubmit} disabled={loading} fullWidth>
+            Send
+          </Button>
+        ))}
     </Box>
   )
 }
