@@ -34,7 +34,7 @@ export function Upload() {
         console.warn('There was no `NEXT_PUBLIC_API_URL` found in the environment!')
       }
 
-      const res = await fetch(`${apiURL}targets/upload/${room}`, {
+      const res = await fetch(`${apiURL}/targets/upload/${room}`, {
         method: 'POST',
         body: formData,
       })
