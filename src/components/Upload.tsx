@@ -1,106 +1,107 @@
 import { ChangeEvent, useEffect, useState } from 'react'
-import getConfig from 'next/config'
-import { NextConfig } from 'next'
-import { Box, Button, CircularProgress, Stack } from '@mui/material'
+import { Alert, AlertTitle, Box, Button, CircularProgress, Stack } from '@mui/material'
 import PhotoCamera from '@mui/icons-material/PhotoCamera'
-
-const { publicRuntimeConfig } = getConfig() as NextConfig
+import { ApiResponse } from 'src/pages/api/upload/[room]'
 
 export function Upload() {
-  const [loading, setLoading] = useState(false)
-  const [file, setFile] = useState<File | null>(null)
-  const [filePreview, setFilePreview] = useState<string | null>(null)
-  const NEXT_PUBLIC_API_URL =
-    process.env.NEXT_PUBLIC_API_URL ?? publicRuntimeConfig?.NEXT_PUBLIC_API_URL
+  const [image, setImage] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (image) {
+      const reader = new FileReader()
+
+      reader.onloadend = () => {
+        if (reader.result) setPreview(reader.result as string)
+      }
+
+      reader.readAsDataURL(image)
+    }
+  }, [image])
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-
-    if (null === files) return
-
-    setFile(files[0])
-    setFilePreview(URL.createObjectURL(files[0]))
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      setImage(file)
+    }
   }
 
   const handleSubmit = async () => {
-    if (null === file) return
-
-    const searchParamsRoomKey = 'room'
-    const params = new URLSearchParams(window.location.search)
-    let room = '0'
-
-    if (params.has(searchParamsRoomKey)) {
-      room = params.get(searchParamsRoomKey)!
-    }
-
-    const formData = new FormData()
-    formData.append('image', file)
-
-    if (undefined === NEXT_PUBLIC_API_URL) {
-      console.warn('There was no `NEXT_PUBLIC_API_URL` found in the environment!')
-    }
-
-    let json
-
-    setLoading(true)
-
-    try {
-      const res = await fetch(`${NEXT_PUBLIC_API_URL}/targets/upload/${room}`, {
-        method: 'POST',
-        body: formData,
-      })
-      json = await res.json()
-
-      if (!res.ok) {
-        throw new Error(json.message)
-      }
-    } catch (error) {
-      console.error(error)
-      setLoading(false)
-
-      if (error instanceof Error) {
-        alert('There was an error uploading that photo. ' + error.message)
-      }
-
+    if (!image) {
+      setError('Please select an image to upload.')
       return
     }
 
-    setLoading(false)
+    setError(null)
+    setIsLoading(true)
 
-    if (undefined !== json) {
-      setFile(null)
-      setFilePreview(null)
+    const searchParamsRoomKey = 'room'
+    const params = new URLSearchParams(window.location.search)
+    const room = params.get(searchParamsRoomKey)
 
-      alert('Image uploaded succesfully!')
+    if (!room) {
+      setError(
+        'Sorry, there was something wrong with determining which lane to upload to. Please close this page and try again.'
+      )
+      return
+    }
+
+    const formData = new FormData()
+    formData.append('image', image)
+
+    try {
+      const res = await fetch(`/api/upload/${room}`, {
+        method: 'POST',
+        body: formData,
+      })
+      const json = (await res.json()) as ApiResponse
+
+      if (!json.success) throw new Error(json.message)
+      if (!res.ok) throw new Error('Failed to upload the image.')
+
+      console.log('Image uploaded succesfully.', json)
+      alert(
+        'Image uploaded succesfully! You can now close this page and request a Therapist to approve your photo.'
+      )
+    } catch (error) {
+      console.error(error)
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'message' in error &&
+        typeof error.message === 'string'
+      ) {
+        setError(error.message)
+      } else {
+        setError('There was an error uploading that photo.')
+      }
+    } finally {
+      setIsLoading(false)
+      setImage(null)
+      setPreview(null)
     }
   }
-
-  useEffect(() => {
-    return () => {
-      if (null === filePreview) return
-
-      URL.revokeObjectURL(filePreview)
-    }
-  }, [filePreview])
 
   return (
     <Box>
       <Button
-        variant={filePreview ? 'outlined' : 'contained'}
+        variant={preview ? 'outlined' : 'contained'}
         component="label"
         startIcon={<PhotoCamera />}
         fullWidth
       >
-        {filePreview ? 'Change' : 'Upload'}
+        {preview ? 'Change' : 'Upload'}
         <input hidden accept="image/*" type="file" onChange={handleFileChange} />
       </Button>
-      {filePreview && (
+      {preview && (
         <Box my={2}>
           {
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={filePreview!}
-              alt="Preview"
+              src={preview}
+              alt="Target preview"
               width={400}
               height={400}
               style={{ objectFit: 'cover', width: '100%', height: 'auto', aspectRatio: '1 / 1' }}
@@ -108,14 +109,20 @@ export function Upload() {
           }
         </Box>
       )}
-      {filePreview &&
-        (loading ? (
+      {error && (
+        <Alert severity="error" variant="filled" sx={{ mt: 2 }}>
+          <AlertTitle>Error</AlertTitle>
+          Something went wrong when uploading your image. {error}
+        </Alert>
+      )}
+      {preview &&
+        (isLoading ? (
           <Stack direction="row" justifyContent="center">
             <CircularProgress />
           </Stack>
         ) : (
-          <Button variant="contained" onClick={handleSubmit} disabled={loading} fullWidth>
-            Send
+          <Button variant="contained" onClick={handleSubmit} disabled={isLoading} fullWidth>
+            Upload
           </Button>
         ))}
     </Box>
